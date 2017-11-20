@@ -4,6 +4,7 @@ import com.sensorcon.sensordrone.DroneEventHandler;
 import com.sensorcon.sensordrone.DroneEventObject;
 import com.sensorcon.sensordrone.java.Drone;
 
+import java.io.IOException;
 import java.util.Locale;
 
 public class SensorDroneDataCollectionTask implements Runnable {
@@ -40,7 +41,8 @@ public class SensorDroneDataCollectionTask implements Runnable {
     private static final int CAPACITANCE_SENSOR_ID = 9;
     private static final int ALTITUDE_SENSOR_ID = 10;
     private static final int BATTERY_VOLTAGE_SENSOR_ID = 11;
-    private static final int CO2_SENSOR_ID = 12;
+    private static final int FILTERED_CO2_SENSOR_ID = 12;
+    private static final int UNFILTERED_CO2_SENSOR_ID = 13;
 
     SensorDroneDataCollectionTask(String macAddress, double latitude, double longitude, long timeout) {
         if (SensorDroneDataCollectionTask.macAddress == null) {
@@ -140,58 +142,59 @@ public class SensorDroneDataCollectionTask implements Runnable {
                 precisionGasMeasured && pressureMeasured && reducingGasMeasured && rgbMeasured && temperatureMeasured && co2Measured;
     }
 
+    @SuppressWarnings("ResultOfMethodCallIgnored")
     private void measureCO2() {
         // CO2 Sensor http://www.mb-systemtechnik.de/produkte_co2_messung_co2_sensor_modul_mit_ausgang.htm
         // Set baudrate
-        drone.setBaudRate_38400();
+        //drone.setBaudRate_38400();
+        drone.setBaudRate_9600(); // As defined in http://www.airtest.com/support/datasheet/COZIRSerialInterface.pdf
         // Command
-        byte[] getStatusCommand = { 0x23, 0x31, 0x30, 0x0D }; // 10 (Read status)
+        // byte[] getStatusCommand = { 0x23, 0x31, 0x30, 0x0D }; // 10 (Read status)
+        byte[] setPollingMode = "K 2\\r\\n".getBytes();
+        drone.uartWrite(setPollingMode);
+        // Now poll the co2
+        byte[] getCO2 = "Z\\r\\n".getBytes();
+        drone.uartWrite(getCO2);
         // UART Write/Read
-        byte[] response = drone.uartWriteForRead(getStatusCommand, 5);
-        double co2 = getFloatValueFromUartResponse(response);
-        if (co2 != -1) {
-            logSample(CO2_SENSOR_ID, co2);
+        try {
+            int available = drone.uartInputStream.available();
+            System.out.println("Available on stream: " + available);
+            boolean foundFilteredCo2 = false;
+            double filteredCo2 = -1;
+            boolean foundUnfilteredCo2 = false;
+            double unfilteredCo2 = -1;
+            for (int i = 0; i < available; i++) {
+                // Check if the first byte available is 'Z' or 0x5a
+                if ((byte)drone.uartInputStream.read() == 0x5a && i < available - 7) {
+                    // Skip the first value, it is a space
+                    drone.uartInputStream.read();
+                    byte[] value = new byte[5];
+                    drone.uartInputStream.read(value);
+                    filteredCo2 = Double.parseDouble(new String(value));
+                    i +=6;
+                    foundFilteredCo2 = true;
+                }
+                // Check if the first byte available is 'z' or 0x7a
+                else if ((byte)drone.uartInputStream.read() == 0x7a && i < available - 7) {
+                    // Skip the first value, it is a space
+                    drone.uartInputStream.read();
+                    byte[] value = new byte[5];
+                    drone.uartInputStream.read(value);
+                    unfilteredCo2 = Double.parseDouble(new String(value));
+                    i +=6;
+                    foundUnfilteredCo2 = true;
+                }
+            }
+            if (foundFilteredCo2) {
+                logSample(FILTERED_CO2_SENSOR_ID, filteredCo2);
+            }
+            if (foundUnfilteredCo2) {
+                logSample(UNFILTERED_CO2_SENSOR_ID, unfilteredCo2);
+            }
+        } catch (IOException e1) {
+            System.err.println(e1.getMessage());
         }
         co2Measured = true;
-    }
-
-    // CO2 Sensor / UART
-    private float getFloatValueFromUartResponse(byte[] response) {
-        StringBuilder asciiSb = new StringBuilder();
-        int index = 0;
-        byte b = response[index];
-        // Check for startbyte
-        if (b == 0x23) {
-            // Reading to end byte or end of byte[]
-            while (b != 0x0D && index < response.length) {
-                index++;
-                b = response[index];
-                asciiSb.append((char) b);
-            }
-            // endbyte found
-            if (b == 0x0D) {
-                try {
-                    // give number back
-                    String ascii = asciiSb.toString().trim();
-                    float uartvalue = Float.parseFloat(ascii);
-                    // Note: Sometimes, the CO2 sensor 10 (ReadStatus) returns, if it is not connected to the power!
-                    if (uartvalue == 10 || ascii.isEmpty()){
-                        uartvalue = -1;
-                    }
-                    return uartvalue;
-
-                } catch (Exception e) {
-                    //System.out.println("UART - Could not parse string to int/float: " + ascii);
-                    return -1;
-                }
-            } else {
-                //System.out.println("UART - Found no endbyte");
-                return -1;
-            }
-        } else {
-            //System.out.println("UART - UART response error / NOT connect to C02 Sensor");
-            return -1;
-        }
     }
 
     private void logSample(int sensorId, double... sensorValues) {
