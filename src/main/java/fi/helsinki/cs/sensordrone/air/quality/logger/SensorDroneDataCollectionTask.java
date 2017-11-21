@@ -178,10 +178,21 @@ public class SensorDroneDataCollectionTask implements Runnable {
     }
 
     private void logSample(int sensorId, double... sensorValues) {
+        if (sensorValues.length == 0 ||
+                (sensorValues.length == 1 && (Double.isNaN(sensorValues[0]) || !Double.isFinite(sensorValues[0])))) {
+            // We dont care about these if the data is not defined
+            return;
+        }
         StringBuilder sampleSb = new StringBuilder(String.format(Locale.ENGLISH, "%d;%s:%d;%f;%f",
                 System.currentTimeMillis(), macAddress, sensorId, latitude, longitude));
         for (double v : sensorValues) {
-            sampleSb.append(String.format(Locale.ENGLISH, ";%f", v));
+            // Handle the case when data is not finite
+            if (Double.isNaN(v) || !Double.isFinite(v)) {
+                sampleSb.append(";");
+            }
+            else {
+                sampleSb.append(String.format(Locale.ENGLISH, ";%f", v));
+            }
         }
         System.out.println(sampleSb.toString());
     }
