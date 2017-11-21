@@ -19,7 +19,9 @@ import com.sensorcon.sensordrone.CoreDrone;
 
 import javax.microedition.io.Connector;
 import javax.microedition.io.StreamConnection;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
@@ -48,7 +50,7 @@ public class Drone extends CoreDrone {
      * @return Returns true upon successful connection; false otherwise.
      * @since 1.2.0
      */
-    public boolean btConnect(String MAC) {
+    public boolean btConnect(String MAC, boolean debug) {
         // Set up the Bluetooth Connection
         // MAC needs to be uppercase
         MAC = MAC.toUpperCase();
@@ -58,7 +60,22 @@ public class Drone extends CoreDrone {
         String connectURL = "btspp://" + MAC + ":1";
 
         try {
-            btSocket = (StreamConnection) Connector.open(connectURL);
+            if (!debug) {
+                // Create a stream to hold the output
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                PrintStream ps = new PrintStream(baos);
+                // IMPORTANT: Save the old System.out!
+                PrintStream old = System.out;
+                // Tell Java to use your special stream
+                System.setOut(ps);
+                btSocket = (StreamConnection) Connector.open(connectURL);
+                System.out.flush();
+                System.setOut(old);
+            }
+            else {
+                btSocket = (StreamConnection) Connector.open(connectURL);
+            }
+
         } catch (IOException e) {
             return false;
         }
@@ -127,7 +144,7 @@ public class Drone extends CoreDrone {
      * @return Returns true upon successful disconnection.
      * @since 1.2.0
      */
-    public boolean disconnect() {
+    public boolean disconnect(boolean debug) {
 
         if (!isConnected) {
             return false;
@@ -140,9 +157,7 @@ public class Drone extends CoreDrone {
             @Override
             public void run() {
 
-                // Stop the communications queue.
                 commService.shutdown();
-
                 // Try to close any input streams
                 try {
                     iStream.close();

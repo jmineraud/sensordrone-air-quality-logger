@@ -4,8 +4,6 @@ import com.sensorcon.sensordrone.DroneEventHandler;
 import com.sensorcon.sensordrone.DroneEventObject;
 import com.sensorcon.sensordrone.java.Drone;
 
-import java.io.IOException;
-import java.util.Arrays;
 import java.util.Locale;
 
 public class SensorDroneDataCollectionTask implements Runnable {
@@ -30,6 +28,7 @@ public class SensorDroneDataCollectionTask implements Runnable {
     private boolean rgbMeasured = false;
     private boolean temperatureMeasured = false;
     private boolean co2Measured = false;
+    private boolean debug = false;
 
     private static final int TEMPERATURE_SENSOR_ID = 1;
     private static final int COLOR_SENSOR_ID = 2;
@@ -45,7 +44,7 @@ public class SensorDroneDataCollectionTask implements Runnable {
     private static final int FILTERED_CO2_SENSOR_ID = 12;
     private static final int UNFILTERED_CO2_SENSOR_ID = 13;
 
-    SensorDroneDataCollectionTask(String macAddress, double latitude, double longitude, long timeout) {
+    SensorDroneDataCollectionTask(String macAddress, double latitude, double longitude, long timeout, boolean debug) {
         if (SensorDroneDataCollectionTask.macAddress == null) {
             SensorDroneDataCollectionTask.drone = new Drone();
             SensorDroneDataCollectionTask.macAddress = macAddress;
@@ -136,6 +135,7 @@ public class SensorDroneDataCollectionTask implements Runnable {
         this.latitude = latitude;
         this.longitude = longitude;
         this.timeout = timeout;
+        this.debug = debug;
     }
 
     private boolean allDataCollected() {
@@ -190,7 +190,7 @@ public class SensorDroneDataCollectionTask implements Runnable {
     public void run() {
 
         if (!drone.isConnected) {
-            drone.btConnect(macAddress);
+            drone.btConnect(macAddress, debug);
         }
 
         if (!drone.isConnected) {
@@ -206,7 +206,7 @@ public class SensorDroneDataCollectionTask implements Runnable {
                 e.printStackTrace();
             }
         }
-        drone.disconnect();
+        drone.disconnect(debug);
     }
 
 }
