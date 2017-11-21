@@ -3,7 +3,7 @@ Periodically reads data from a given sensordrone to the defined output
 
 # Usage
 
-`gradle run -d 30000 -m xx:xx:xx:xx -lat LT -lon LN 2>> error 1>> output`
+`./gradlew run -PappArgs="['-d', '10000', '-m', 'xx:xx:xx:xx', '-lat', '1.0', '-lon', '2.0']" 2>> error 1>> output`
 
 where -d is the delay between the request for samples
       -m is the mac address of the sensordrone
