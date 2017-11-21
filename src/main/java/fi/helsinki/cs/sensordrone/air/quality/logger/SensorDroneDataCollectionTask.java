@@ -5,6 +5,7 @@ import com.sensorcon.sensordrone.DroneEventObject;
 import com.sensorcon.sensordrone.java.Drone;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Locale;
 
 public class SensorDroneDataCollectionTask implements Runnable {
@@ -154,45 +155,24 @@ public class SensorDroneDataCollectionTask implements Runnable {
         drone.uartWrite(setPollingMode);
         // Now poll the co2
         byte[] getCO2 = "Z\\r\\n".getBytes();
-        drone.uartWrite(getCO2);
-        // UART Write/Read
-        try {
-            int available = drone.uartInputStream.available();
-            System.out.println("Available on stream: " + available);
-            boolean foundFilteredCo2 = false;
-            double filteredCo2 = -1;
-            boolean foundUnfilteredCo2 = false;
-            double unfilteredCo2 = -1;
-            for (int i = 0; i < available; i++) {
-                // Check if the first byte available is 'Z' or 0x5a
-                if ((byte)drone.uartInputStream.read() == 0x5a && i < available - 7) {
-                    // Skip the first value, it is a space
-                    drone.uartInputStream.read();
-                    byte[] value = new byte[5];
-                    drone.uartInputStream.read(value);
-                    filteredCo2 = Double.parseDouble(new String(value));
-                    i +=6;
-                    foundFilteredCo2 = true;
-                }
-                // Check if the first byte available is 'z' or 0x7a
-                else if ((byte)drone.uartInputStream.read() == 0x7a && i < available - 7) {
-                    // Skip the first value, it is a space
-                    drone.uartInputStream.read();
-                    byte[] value = new byte[5];
-                    drone.uartInputStream.read(value);
-                    unfilteredCo2 = Double.parseDouble(new String(value));
-                    i +=6;
-                    foundUnfilteredCo2 = true;
+
+        boolean isResponseValid = false;
+        int nbTries = 5;
+        while (!isResponseValid && nbTries > 0) {
+            byte[] response = drone.uartWriteForRead(getCO2, 5);
+            // We are looking for the start space Z space some values
+            if (response[0] == 32 && response[1] == 90 && response[2] == 32 && response[4] != 0) {
+                byte[] values = new byte[5];
+                System.arraycopy(response, 4, values, 0, values.length);
+                logSample(FILTERED_CO2_SENSOR_ID, Double.parseDouble(new String(values)));
+                isResponseValid = true;
+                // Now processing the last unfiltered reading
+                if (response[8] == 32 && response[9] == 122 && response[10] == 32 && response[11] != 0) {
+                    System.arraycopy(response, 11, values, 0, values.length);
+                    logSample(UNFILTERED_CO2_SENSOR_ID, Double.parseDouble(new String(values)));
                 }
             }
-            if (foundFilteredCo2) {
-                logSample(FILTERED_CO2_SENSOR_ID, filteredCo2);
-            }
-            if (foundUnfilteredCo2) {
-                logSample(UNFILTERED_CO2_SENSOR_ID, unfilteredCo2);
-            }
-        } catch (IOException e1) {
-            System.err.println(e1.getMessage());
+            nbTries--;
         }
         co2Measured = true;
     }
