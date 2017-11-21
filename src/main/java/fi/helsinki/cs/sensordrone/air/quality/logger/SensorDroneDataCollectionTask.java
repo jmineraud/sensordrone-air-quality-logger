@@ -178,8 +178,8 @@ public class SensorDroneDataCollectionTask implements Runnable {
     }
 
     private void logSample(int sensorId, double... sensorValues) {
-        StringBuilder sampleSb = new StringBuilder(String.format(Locale.ENGLISH, "%d;%s;%f;%f;%d",
-                System.currentTimeMillis(), macAddress, latitude, longitude, sensorId));
+        StringBuilder sampleSb = new StringBuilder(String.format(Locale.ENGLISH, "%d;%s:%d;%f;%f",
+                System.currentTimeMillis(), macAddress, sensorId, latitude, longitude));
         for (double v : sensorValues) {
             sampleSb.append(String.format(Locale.ENGLISH, ";%f", v));
         }
