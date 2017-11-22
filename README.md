@@ -3,8 +3,9 @@ Periodically reads data from a given sensordrone to the defined output
 
 # Usage
 
-`./gradlew run -PappArgs="['-d', '10000', '-m', 'xx:xx:xx:xx', '-lat', '1.0', '-lon', '2.0']" 2>> error 1>> output`
+`./gradlew run -q -PappArgs="['-d', '10000', '-m', 'xx:xx:xx:xx', '-lat', '1.0', '-lon', '2.0']" 2>> error 1>> output`
 
+-q indicates that we do not log gradle's messages
 where -d is the delay between the request for samples
       -m is the mac address of the sensordrone
       -lat/lon are the latitude and longitude of these sensors (float)
