@@ -20,3 +20,6 @@ OpenSUSE 10.2 (bluez-libs-3.7) and later
 Fedora Core 6 (bluez-libs-3.7) and later
 Debian 4.0r3 ARM on the Linksys NSLU2 (bluez-libs-3.7)
 
+# For the USB
+Copy following file to /etc/udev/rules.d/99-sensordrone.rules as root
+SUBSYSTEM=="usb",ATTR{idVendor}=="8087",ATTR{idProduct}=="0024",MODE="0660",GROUP="wheel"

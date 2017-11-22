@@ -92,6 +92,7 @@ public abstract class CoreDrone {
      * An object used for debug logging
      */
     protected Logger logger;
+
     /**
      * Used by this class to send/receive data such as firmware version, calibration data, etc...
      */
