@@ -183,7 +183,7 @@ public class SensorDroneDataCollectionTask implements Runnable {
             // We dont care about these if the data is not defined
             return;
         }
-        StringBuilder sampleSb = new StringBuilder(String.format(Locale.ENGLISH, "%d;%s:%d;%f;%f",
+        StringBuilder sampleSb = new StringBuilder(String.format(Locale.ENGLISH, "%d;%s;%d;%f;%f",
                 System.currentTimeMillis(), macAddress, sensorId, latitude, longitude));
         for (double v : sensorValues) {
             // Handle the case when data is not finite
