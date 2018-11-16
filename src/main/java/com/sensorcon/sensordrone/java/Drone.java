@@ -77,6 +77,7 @@ public class Drone extends CoreDrone {
             }
 
         } catch (IOException e) {
+            e.printStackTrace();
             return false;
         }
         // Lets connect the socket
@@ -93,6 +94,7 @@ public class Drone extends CoreDrone {
             byte[] HWFW = localComms.sdCallAndResponse(readHWFW);
             // Cancel if we don't get a good response
             if (HWFW == null) {
+                System.err.println("HWFW is null, cannot connect");
                 // If we get a null here, assume there was an error
                 resetFirmwareVersion();
                 oStream.close();
@@ -105,7 +107,7 @@ public class Drone extends CoreDrone {
                     firmwareVersion = (int)(HWFW[1]);
                     firmwareRevision = (int)(HWFW[2]);
                 } catch (ArrayIndexOutOfBoundsException o) {
-                    //
+                    o.printStackTrace();
                     resetFirmwareVersion();
                     oStream.close();
                     iStream.close();
@@ -118,6 +120,7 @@ public class Drone extends CoreDrone {
             // Make sure the Controller objects are initialized correctly
             boolean hwCheck = initializeHardware(hardwareVersion);
             if (!hwCheck) {
+                System.err.println("Hardware check failed");
                 oStream.close();
                 iStream.close();
                 btSocket.close();

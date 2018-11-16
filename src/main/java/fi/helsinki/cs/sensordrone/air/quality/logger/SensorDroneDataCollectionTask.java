@@ -8,7 +8,6 @@ import java.util.Locale;
 
 public class SensorDroneDataCollectionTask implements Runnable {
 
-
     private static Drone drone;
     private static String macAddress;
 
@@ -29,6 +28,7 @@ public class SensorDroneDataCollectionTask implements Runnable {
     private boolean temperatureMeasured = false;
     private boolean co2Measured = false;
     private boolean debug = false;
+    private boolean[] measuring = new boolean[12];
 
     private static final int TEMPERATURE_SENSOR_ID = 1;
     private static final int COLOR_SENSOR_ID = 2;
@@ -44,29 +44,48 @@ public class SensorDroneDataCollectionTask implements Runnable {
     private static final int FILTERED_CO2_SENSOR_ID = 12;
     private static final int UNFILTERED_CO2_SENSOR_ID = 13;
 
+
+    private static final int[] SENSOR_MASK = new int[] {
+            COLOR_SENSOR_ID, PRESSURE_SENSOR_ID, OXIDIZING_GAS_SENSOR_ID,
+            TEMPERATURE_SENSOR_ID, HUMIDITY_SENSOR_ID
+    };
+
+
+    private static boolean validSensor(int sensorId) {
+        if (SENSOR_MASK == null) return true;
+        for (int id : SENSOR_MASK) {
+            if (id == sensorId) return true;
+        }
+        return false;
+    }
+
     SensorDroneDataCollectionTask(String macAddress, double latitude, double longitude, long timeout, boolean debug) {
         if (SensorDroneDataCollectionTask.macAddress == null) {
             SensorDroneDataCollectionTask.drone = new Drone();
             SensorDroneDataCollectionTask.macAddress = macAddress;
 
+            for (int i = 0; i < measuring.length; i++) {
+                measuring[i] = validSensor(i + 1);
+            }
+
             DroneEventHandler mDroneEventHandler = new DroneEventHandler() {
                 @Override
                 public void parseEvent(DroneEventObject event) {
                     if (event.matches(DroneEventObject.droneEventType.CONNECTED)) {
-                        drone.setLEDs(0, 0, 126); // Set LED blue when connected
-                        drone.enableADC();
-                        drone.enableAltitude();
-                        drone.enableCapacitance();
-                        drone.enableHumidity();
-                        drone.enableIRTemperature();
-                        drone.enableOxidizingGas();
-                        drone.enablePrecisionGas();
-                        drone.enablePressure();
-                        drone.enableReducingGas();
-                        drone.enableRGBC();
-                        drone.enableTemperature();
-                        drone.measureBatteryVoltage();
-                        measureCO2();
+                        drone.setLEDs(126, 0, 0); // Set LED red when connected
+                        // if (validSensor(BATTERY_VOLTAGE_SENSOR_ID)) drone.enableADC();
+                        if (validSensor(ALTITUDE_SENSOR_ID)) drone.enableAltitude();
+                        if (validSensor(CAPACITANCE_SENSOR_ID)) drone.enableCapacitance();
+                        if (validSensor(HUMIDITY_SENSOR_ID))drone.enableHumidity();
+                        if (validSensor(IR_TEMPERATURE_SENSOR_ID)) drone.enableIRTemperature();
+                        if (validSensor(OXIDIZING_GAS_SENSOR_ID)) drone.enableOxidizingGas();
+                        if (validSensor(PRECISION_GAS_SENSOR_ID)) drone.enablePrecisionGas();
+                        if (validSensor(PRESSURE_SENSOR_ID)) drone.enablePressure();
+                        if (validSensor(REDUCING_GAS_SENSOR_ID)) drone.enableReducingGas();
+                        if (validSensor(COLOR_SENSOR_ID)) drone.enableRGBC();
+                        if (validSensor(TEMPERATURE_SENSOR_ID)) drone.enableTemperature();
+                        if (validSensor(BATTERY_VOLTAGE_SENSOR_ID)) drone.measureBatteryVoltage();
+                        if (validSensor(UNFILTERED_CO2_SENSOR_ID)) measureCO2();
                         // Enabled
                     } else if (event.matches(DroneEventObject.droneEventType.ALTITUDE_ENABLED)) {
                         drone.measureAltitude();
@@ -139,8 +158,18 @@ public class SensorDroneDataCollectionTask implements Runnable {
     }
 
     private boolean allDataCollected() {
-        return batteryMeasured && altitudeMeasured && capacitanceMeasured && humidityMeasured && irTemperatureMeasured && oxidizingGasMeasured &&
-                precisionGasMeasured && pressureMeasured && reducingGasMeasured && rgbMeasured && temperatureMeasured && co2Measured;
+
+        return (temperatureMeasured || !measuring[0]) &&
+                (rgbMeasured || !measuring[1]) &&
+                (reducingGasMeasured || !measuring[2]) &&
+                (pressureMeasured || !measuring[3]) &&
+                (precisionGasMeasured || !measuring[4]) &&
+                (oxidizingGasMeasured || !measuring[5]) &&
+                (irTemperatureMeasured || !measuring[6]) &&
+                (humidityMeasured || !measuring[7]) &&
+                (capacitanceMeasured || !measuring[8]) &&
+                (altitudeMeasured || !measuring[9]) &&
+                (batteryMeasured || !measuring[10]);
     }
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
@@ -197,8 +226,36 @@ public class SensorDroneDataCollectionTask implements Runnable {
         System.out.println(sampleSb.toString());
     }
 
+    private void reset() {
+        batteryMeasured = false;
+        altitudeMeasured = false;
+        capacitanceMeasured = false;
+        humidityMeasured = false;
+        irTemperatureMeasured = false;
+        oxidizingGasMeasured = false;
+        precisionGasMeasured = false;
+        pressureMeasured = false;
+        reducingGasMeasured = false;
+        rgbMeasured = false;
+        temperatureMeasured = false;
+        co2Measured = false;
+        if (validSensor(ALTITUDE_SENSOR_ID)) drone.measureAltitude();
+        if (validSensor(CAPACITANCE_SENSOR_ID)) drone.measureCapacitance();
+        if (validSensor(HUMIDITY_SENSOR_ID))drone.measureHumidity();
+        if (validSensor(IR_TEMPERATURE_SENSOR_ID)) drone.measureIRTemperature();
+        if (validSensor(OXIDIZING_GAS_SENSOR_ID)) drone.measureOxidizingGas();
+        if (validSensor(PRECISION_GAS_SENSOR_ID)) drone.measurePrecisionGas();
+        if (validSensor(PRESSURE_SENSOR_ID)) drone.measurePressure();
+        if (validSensor(REDUCING_GAS_SENSOR_ID)) drone.measureReducingGas();
+        if (validSensor(COLOR_SENSOR_ID)) drone.measureRGBC();
+        if (validSensor(TEMPERATURE_SENSOR_ID)) drone.measureTemperature();
+        if (validSensor(BATTERY_VOLTAGE_SENSOR_ID)) drone.measureBatteryVoltage();
+        if (validSensor(UNFILTERED_CO2_SENSOR_ID)) measureCO2();
+    }
+
     @Override
     public void run() {
+        // System.out.println("Running task");
 
         if (!drone.isConnected) {
             drone.btConnect(macAddress, debug);
@@ -210,6 +267,7 @@ public class SensorDroneDataCollectionTask implements Runnable {
         }
 
         long startTime = System.currentTimeMillis();
+        reset();
         while (drone.isConnected && !allDataCollected() && (System.currentTimeMillis() - startTime < timeout)) {
             try {
                 Thread.sleep(20);
@@ -217,7 +275,9 @@ public class SensorDroneDataCollectionTask implements Runnable {
                 e.printStackTrace();
             }
         }
-        drone.disconnect(debug);
     }
 
+    void disconnect() {
+        drone.disconnect(debug);
+    }
 }

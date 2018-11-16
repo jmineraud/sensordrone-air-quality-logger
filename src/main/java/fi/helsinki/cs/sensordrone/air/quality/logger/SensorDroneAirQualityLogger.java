@@ -53,6 +53,7 @@ public class SensorDroneAirQualityLogger {
                     // Tell Java to use your special stream
                     System.setOut(ps);
                 }
+                task.disconnect();
             }));
         }
         catch (ParseException exp) {

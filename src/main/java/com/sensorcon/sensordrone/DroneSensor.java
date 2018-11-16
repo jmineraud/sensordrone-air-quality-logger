@@ -240,7 +240,7 @@ public abstract class DroneSensor {
      */
     void connectionLost() {
 
-
+        System.err.println("connection!");
         // Stop the communications queue.
         myDrone.commService.shutdownNow();
 
